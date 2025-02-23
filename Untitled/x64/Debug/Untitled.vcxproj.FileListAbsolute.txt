@@ -1,0 +1,2 @@
+C:\Users\jsanc\Desktop\Untitled\x64\Debug\shaders\hello.glsl
+C:\Users\jsanc\Desktop\Untitled\x64\Debug\textures\awesomeface.png
