@@ -1,5 +1,85 @@
 ﻿#include "renderer.h"
 
+#include <cstdio>
+#include <iostream>
+
+#include <SDL3/SDL.h>
+#include <glad/glad.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+
+void Renderer::Init()
+{
+    gladLoadGL();
+    
+    { // Enable OpenGL Debug Mode
+        glEnable(GL_DEBUG_OUTPUT);
+        glDebugMessageCallback(OpenGLDebugMessageCallback, nullptr);
+    }
+
+    { // Print extensions list to stdout
+        // Get the number of extensions
+        GLint numExtensions;
+        glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
+
+        // Print all extensions
+        for (GLint i = 0; i < numExtensions; i++) {
+            const char* extensionName = (const char*)glGetStringi(GL_EXTENSIONS, i);
+            std::cout << "Extension #" << i << ": " << extensionName << std::endl;
+        }
+    }
+    
+    Shader = CompileShader("shaders/hello.glsl");
+    MyTexture = CreateTexture("textures/awesomeface.png");
+
+    f32 Vertices[] =
+    {
+        // Positions        // Texture Coordinates
+        0.5f, 0.5f, 0.0f, 1.0f, 1.0f, // top right
+        0.5f, -0.5f, 0.0f, 1.0f, 0.0f, // bottom right
+        -0.5f, -0.5f, 0.0f, 0.0f, 0.0f, // bottom left
+        -0.5f, 0.5f, 0.0f, 0.0f, 1.0f // top left
+    };
+
+    u32 Indices[] =
+    {
+        0, 1, 3,
+        1, 2, 3
+    };
+
+    glCreateVertexArrays(1,&VAO);
+
+    glCreateBuffers(1,  &VBO);
+    glNamedBufferStorage(VBO, sizeof(Vertices), Vertices, GL_DYNAMIC_STORAGE_BIT);
+
+    glCreateBuffers(1, &EBO);
+    glNamedBufferStorage(EBO, sizeof(Indices), Indices, GL_DYNAMIC_STORAGE_BIT);
+
+    glVertexArrayVertexBuffer(VAO, 0, VBO, 0, sizeof(f32) * 5); // f32 *5 is the stride between each vertex
+    glVertexArrayElementBuffer(VAO, EBO);
+
+    glEnableVertexArrayAttrib(VAO, 0); // Positions
+    glEnableVertexArrayAttrib(VAO, 1); // Texture Coordinates
+
+    glVertexArrayAttribFormat(VAO, 0, 3, GL_FLOAT, GL_FALSE, 0); // Specify the attrib format for the positions
+    glVertexArrayAttribFormat(VAO, 1, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 3); // Specify the attrib format for the texture coordinates
+
+    glVertexArrayAttribBinding(VAO, 0, 0); // I don't understand the last parameter, WTF? Why always 0?
+    glVertexArrayAttribBinding(VAO, 1, 0);
+    
+    glBindTextureUnit(0, MyTexture);
+}
+
+void Renderer::BeginFrame()
+{
+    glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    glBindVertexArray(VAO);        
+    glUseProgram(Shader);    
+}
+
 u32 Renderer::CompileShader(const char* Filename)
 {
     Assert(Filename);
@@ -61,8 +141,36 @@ u32 Renderer::CompileShader(const char* Filename)
     return CompiledShader;
 }
 
+u32 Renderer::CreateTexture(const char* Filepath)
+{
+    u32 Handle;
+
+    i32 Width, Height, ChannelCount;
+    stbi_set_flip_vertically_on_load(true);
+    u8 *ImageData = stbi_load(Filepath, &Width, &Height, &ChannelCount, 4);
+
+    glCreateTextures(GL_TEXTURE_2D, 1, &Handle);
+
+    glTextureParameteri(Handle, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTextureParameteri(Handle, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTextureParameteri(Handle, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTextureParameteri(Handle, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTextureStorage2D(Handle, 1, GL_RGBA8, Width, Height);
+    
+    glTextureSubImage2D(Handle, 0, 0, 0, Width, Height, GL_RGBA, GL_UNSIGNED_BYTE, ImageData);
+
+    glGenerateTextureMipmap(Handle);
+    
+    stbi_image_free(ImageData);
+    
+    return Handle;    
+}
+
 void Renderer::OpenGLDebugMessageCallback(GLenum Source, GLenum Type, GLuint Id, GLenum Severity, GLsizei Length, GLchar const* Message, void const* UserParam)
 {
+    using namespace std;
+    
     Source;
     Type;
     Id;
@@ -73,32 +181,32 @@ void Renderer::OpenGLDebugMessageCallback(GLenum Source, GLenum Type, GLuint Id,
 
     switch (Source)
     {
-        case GL_DEBUG_SOURCE_API: printf("API:"); break;
-        case GL_DEBUG_SOURCE_WINDOW_SYSTEM: printf("WINDOW SYSTEM:"); break;
-        case GL_DEBUG_SOURCE_SHADER_COMPILER: printf("SHADER COMPILER:"); break;
-        case GL_DEBUG_SOURCE_THIRD_PARTY: printf("THIRD PARTY:"); break;
-        case GL_DEBUG_SOURCE_APPLICATION: printf("APPLICATION:"); break;
-        case GL_DEBUG_SOURCE_OTHER: printf("OTHER:"); break;
+        case GL_DEBUG_SOURCE_API: cout << "API:"; break;
+        case GL_DEBUG_SOURCE_WINDOW_SYSTEM: cout << "WINDOW SYSTEM:"; break;
+        case GL_DEBUG_SOURCE_SHADER_COMPILER: cout << "SHADER COMPILER:"; break;
+        case GL_DEBUG_SOURCE_THIRD_PARTY: cout << "THIRD PARTY:"; break;
+        case GL_DEBUG_SOURCE_APPLICATION: cout << "APPLICATION:"; break;
+        case GL_DEBUG_SOURCE_OTHER: cout << "OTHER:"; break;
     }
 
     switch (Type)
     {
-        case GL_DEBUG_TYPE_ERROR: printf("ERROR:"); break;
-        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: printf("DEPRECATED_BEHAVIOR:"); break;
-        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: printf("UNDEFINED_BEHAVIOR:"); break;
-        case GL_DEBUG_TYPE_PORTABILITY: printf("PORTABILITY:"); break;
-        case GL_DEBUG_TYPE_PERFORMANCE: printf("PERFORMANCE:"); break;
-        case GL_DEBUG_TYPE_MARKER: printf("MARKER:"); break;
-        case GL_DEBUG_TYPE_OTHER: printf("OTHER:"); break;
+        case GL_DEBUG_TYPE_ERROR: cout << "ERROR:"; break;
+        case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR: cout << "DEPRECATED_BEHAVIOR:"; break;
+        case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR: cout << "UNDEFINED_BEHAVIOR:"; break;
+        case GL_DEBUG_TYPE_PORTABILITY: cout << "PORTABILITY:"; break;
+        case GL_DEBUG_TYPE_PERFORMANCE: cout << "PERFORMANCE:"; break;
+        case GL_DEBUG_TYPE_MARKER: cout << "MARKER:"; break;
+        case GL_DEBUG_TYPE_OTHER: cout << "OTHER:"; break;
     }
 
     switch (Severity)
     {
-        case GL_DEBUG_SEVERITY_NOTIFICATION: printf("NOTIFICATION:"); break;
-        case GL_DEBUG_SEVERITY_LOW: printf("LOW:"); break;
-        case GL_DEBUG_SEVERITY_MEDIUM: printf("MEDIUM:"); break;
-        case GL_DEBUG_SEVERITY_HIGH: printf("HIGH:"); break;
+        case GL_DEBUG_SEVERITY_NOTIFICATION: cout << "NOTIFICATION:"; break;
+        case GL_DEBUG_SEVERITY_LOW: cout << "LOW:"; break;
+        case GL_DEBUG_SEVERITY_MEDIUM: cout << "MEDIUM:"; break;
+        case GL_DEBUG_SEVERITY_HIGH: cout << "HIGH:"; break;
     }
 
-    printf("->  %s\n", Message);    
+    cout << "->  " << Message << endl;
 }
