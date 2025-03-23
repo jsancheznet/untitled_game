@@ -1,2 +1,6 @@
 C:\Users\jsanc\Desktop\Untitled\x64\Debug\shaders\hello.glsl
 C:\Users\jsanc\Desktop\Untitled\x64\Debug\textures\awesomeface.png
+C:\Users\jsanc\Desktop\Untitled\x64\Debug\fonts\Arial.json
+C:\Users\jsanc\Desktop\Untitled\x64\Debug\fonts\Arial.png
+C:\Users\jsanc\Desktop\Untitled\x64\Debug\fonts\Roboto.json
+C:\Users\jsanc\Desktop\Untitled\x64\Debug\fonts\Roboto.png

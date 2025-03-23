@@ -9,6 +9,10 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
+Renderer::Renderer(SDL_Window* Window) : Window(Window)
+{
+}
+
 void Renderer::Init()
 {
     gladLoadGL();
@@ -17,6 +21,9 @@ void Renderer::Init()
         glEnable(GL_DEBUG_OUTPUT);
         glDebugMessageCallback(OpenGLDebugMessageCallback, nullptr);
     }
+    
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);    
 
     { // Print extensions list to stdout
         // Get the number of extensions
@@ -30,9 +37,9 @@ void Renderer::Init()
         }
     }
     
-    Shader = CompileShader("shaders/hello.glsl");
-    MyTexture = CreateTexture("textures/awesomeface.png");
-
+    ExampleShader = CompileShader("shaders/hello.glsl");
+    ExampleTexture = CreateTexture("fonts/RobotoBitmapFont.png");
+    
     f32 Vertices[] =
     {
         // Positions        // Texture Coordinates
@@ -68,16 +75,21 @@ void Renderer::Init()
     glVertexArrayAttribBinding(VAO, 0, 0); // I don't understand the last parameter, WTF? Why always 0?
     glVertexArrayAttribBinding(VAO, 1, 0);
     
-    glBindTextureUnit(0, MyTexture);
+    glBindTextureUnit(0, ExampleTexture);
 }
 
 void Renderer::BeginFrame()
 {
-    glClearColor(0.0f, 1.0f, 0.0f, 1.0f);
+    glClearColor(0.392f, 0.584f, 0.929f, 1.0f);    
     glClear(GL_COLOR_BUFFER_BIT);
 
     glBindVertexArray(VAO);        
-    glUseProgram(Shader);    
+    glUseProgram(ExampleShader);    
+}
+
+void Renderer::EndFrame()
+{
+    SDL_GL_SwapWindow(Window);
 }
 
 u32 Renderer::CompileShader(const char* Filename)
